@@ -1,163 +1,161 @@
 /* Magic Rows | github.com/michaelburtonray/magic-rows */
-;(function( window, $, undefined ) {
+;(function(window, $, undefined) {'use strict';
 
-  'use strict';
+  $.fn.magicRows = function(options) {
 
-  $.fn.magicRows = function ( options ) {
-    
-    // hide everything while it is all being shilfted around
-    this.addClass('images');
-    $('html').addClass('loading')
+		// hide everything while it is all being shilfted around
+		this.addClass('images');
+		$('html').addClass('loading')
 
-    // apply css styles to container, anchor, and images
-    this.css({
-      'font-size': 0,
-      'text-align': 'justify'
-    }).children().css({
-      'display': 'inline-block'
-    }).find('img').css({
-      'display':'block'
-    });
+		// apply css styles to container, anchor, and images
+		this.css({
+			'font-size' : 0,
+			'text-align' : 'justify'
+		}).children().css({
+			'display' : 'inline-block'
+		}).find('img').css({
+			'display' : 'block'
+		});
 
-    // Hack to get the last line of container to be text-align: justify
-    var $style_hack = $("<style type='text/css'>.images:after { content: '.'; display: inline-block; width: 100%; }</style>");
-    $style_hack.appendTo($('head'));
+		// Hack to get the last line of container to be text-align: justify
+		var $style_hack = $("<style type='text/css'>.images:after { content: '.'; display: inline-block; width: 100%; }</style>");
+		$style_hack.appendTo($('head'));
 
+		// support multiple elements
+		if (this.length > 1) {
+			this.each(function() {
+				$(this).magicRows(options)
+			});
+			return this;
+		}
 
-    // support multiple elements
-    if (this.length > 1){
-      this.each(function() { $(this).magicRows(options) });
-      return this;
-    }
+		// private variables
+		var images_array = [];
+		var row = [];
 
-    // private variables
-    var images_array = [];
-    var row = [];
+		// settings
+		var settings = $.extend({
+			max_height : 225,
+			margin : 6,
+			loading_selector : 'html'
+		}, options);
 
-    // settings
-    var settings = $.extend({
-      max_height: 225,
-      margin: 6
-    }, options);
+		// private methods
+		
+		/**
+		 * Calculates the correct margin for the image based on its position in the row
+		 * No left margin on first image; no right margin on last image; equal margins on all others
+		 * @param {int} pos indicates the position of the image
+		 * @param {posLast} is the zero-based indicator of the row's last position
+		 * @return {string} CSS-style string of margins
+		 */
+		var calcMargins = function(pos, posLast) {
+			var margin;
 
+			// first image in row
+			if (pos == 0) {
+				margin = settings.margin + 'px ' + settings.margin + 'px ' + settings.margin + 'px 0px';
 
+				// last image in row
+			} else if (pos == posLast) {
+				margin = settings.margin + 'px 0 ' + settings.margin + 'px ' + settings.margin + 'px';
 
-    // public methods
-    this.init = function() {
+				// everything else
+			} else {
+				margin = settings.margin + 'px';
+			}
 
-      var $children = $(this).find('img');
+			return margin;
+		};
 
-      // set up the images_array array that stores information for
-      // each image to be resized
-      $children.each(function(){
-        var $this = $(this);
+		/**
+		 * Sets the proper height and margin for each row containing images.
+		 * @param *this* should be the DOM container of the a/img elements
+ 		 * @param {Image[]} row
+ 		 * @param {int} height
+		 */
+		var positionRow = function(row, height) {
+			// iterate through row array and set height and margins
+			for (var i = 0; i < row.length; i++) {
+				var index = row[i].index;
 
-        var image = {
-          aspect_ratio: $this.width() / $this.height(),
-          height: $this.height(),
-          index: $this.parent().index(),
-          width: $this.width()
-        };
-        images_array.push(image);
+				if (row.length > 1) {
+					$(this).find('a:eq(' + index + ')').find('img')[0].style.height = height + 'px';
+				}
 
-      });
+				$(this).find('a:eq(' + index + ')').find('img')[0].style.margin = calcMargins(i, row.length - 1);
 
-      this.trigger();
-      $('html').removeClass('loading');
-      return this;
-    }
+			}
+		};
 
-    this.trigger = function() {
-      var parent_width = this.width();
+		// public methods
+		this.init = function() {
 
-      //  Row Loop
-      while(images_array.length > 0) {
+			var $children = $(this).find('img');
 
-        // current image
-        var image = images_array.shift();
+			// set up the images_array array that stores information for
+			// each image to be resized
+			$children.each(function() {
+				var $this = $(this);
 
-        // push onto row
-        row.push(image);
+				var image = {
+					aspect_ratio : $this.width() / $this.height(),
+					height : $this.height(),
+					index : $this.parent().index(),
+					width : $this.width()
+				};
+				images_array.push(image);
 
-        // calculate height
-        var denominator = 0;
+			});
 
-        for(var i=0; i < row.length; i++) {
-          denominator += row[i].aspect_ratio;
-        }
+			this.trigger();
+			$(settings.loading_selector).removeClass('loading');
+			return this;
+		}
 
-        var whitespace = (settings.margin * row.length * 2) - (2 * settings.margin);
+		this.trigger = function() {
+			var parent_width = this.width();
 
-        var height = Math.floor((parent_width - whitespace)/denominator) - 1;
+			//  Row Loop
+			while (images_array.length > 0) {
 
-        if(height <= settings.max_height) {
+				// current image
+				var image = images_array.shift();
 
-          // iterate through row array and set height
-          for(var i=0; i < row.length; i++) {
-            var index = row[i].index;
+				// push onto row
+				row.push(image);
 
-            $(this).find('a:eq(' + index + ')').find('img')[0].style.height = height + 'px';
+				// calculate height
+				var denominator = 0;
 
-            var margin;
+				for (var i = 0; i < row.length; i++) {
+					denominator += row[i].aspect_ratio;
+				}
 
-            // first image in row
-            if(i == 0) {
-              // $(this).children().get(index).style.clear = 'left';
-              margin = settings.margin + 'px ' + settings.margin + 'px ' + settings.margin + 'px 0px';
+				var whitespace = (settings.margin * row.length * 2) - (2 * settings.margin);
 
-            // last image in row
-            } else if(i == row.length - 1) {
-              margin = settings.margin + 'px 0 ' + settings.margin + 'px ' + settings.margin + 'px';
+				var height = Math.floor((parent_width - whitespace) / denominator) - 1;
 
-            // everything else
-            } else {
-              margin = settings.margin + 'px';
-            }
-            $(this).find('a:eq(' + index + ')').find('img')[0].style.margin = margin;              
+				if (height <= settings.max_height) {
 
-          }
+					positionRow.apply(this, [row, height]);
 
-          // clear our row array
-          row = [];
-        }
+					// clear our row array
+					row = [];
+				}
 
-      }
+			}
 
+			// remaining images
+			if (row.length > 0) {
+				positionRow.apply(this, [row, height]);
+			}
 
-      // remaining images
-      if(row.length > 0) {
-        for(var i=0; i < row.length; i++) {
+			return this;
+		}
 
-            var index = row[i].index;
+		return this.init();
 
+	};
 
-            if(row.length > 1)
-              $(this).find('a:eq(' + index + ')').find('img')[0].style.height = height + 'px';
-
-            var margin;
-
-            // first image in row
-            if(i == 0) {
-              margin = settings.margin + 'px ' + settings.margin + 'px ' + settings.margin + 'px 0px';
-
-            // last image in row
-            } else if(i == row.length - 1) {
-              margin = settings.margin + 'px 0 ' + settings.margin + 'px ' + settings.margin + 'px';
-
-            // everything else
-            } else {
-              margin = settings.margin + 'px';
-            }
-            $(this).find('a:eq(' + index + ')').find('img')[0].style.margin = margin;
-
-        }
-      }
-
-      return this;
-    }
-
-    return this.init();
-
-  };
-
-})( window, jQuery);
+})(window, jQuery); 
